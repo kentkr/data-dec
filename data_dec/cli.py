@@ -9,7 +9,7 @@ from pyspark.sql import Row, DataFrame
 parser = argparse.ArgumentParser()
 subparsers = parser.add_subparsers(dest='command', required=True)
 build_parser = subparsers.add_parser('build', help='Run and test models')
-build_parser.add_argument('--show', help='Display the dataframes', action='store_true')
+#build_parser.add_argument('--show', help='Display the dataframes', action='store_true')
 run_parser = subparsers.add_parser('run', help='Run models')
 test_parser = subparsers.add_parser('test', help='Test models')
 args = parser.parse_args()
@@ -29,21 +29,27 @@ def load_models() -> None:
             with open(os.path.join(models_dir, file), 'r') as file:
                 exec(file.read())
 
+def run() -> None:
+    for model in entity.models.values():
+        model.write()
+
+def test() -> None:
+    for model in entity.models.values():
+        model.test()
+
 def build() -> None:
     for model in entity.models.values():
         model.write()
         model.test()
-        if args.show:
-            model.show()
 
 def main():
     load_models()
     if args.command == 'build':
         build()
     elif args.command == 'run':
-        print('The run command is a work in progress')
+        run()
     elif args.command == 'test':
-        print('The test command is a work in progress')
+        test()
 
 if __name__ == '__main__':
     main()

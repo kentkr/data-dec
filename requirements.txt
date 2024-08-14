@@ -3,8 +3,8 @@ botocore==1.34.158
 cachetools==5.4.0
 certifi==2024.7.4
 charset-normalizer==3.3.2
-# current_dir (data_dec==0.0.1)
-.
+# Editable Git install with no remote (data_dec==0.0.1)
+-e .
 databricks-connect==13.3.0
 databricks-sdk==0.28.0
 google-auth==2.33.0

@@ -28,6 +28,9 @@ the dev full access cluster (id `1006-163626-a00gw6us`) and turn it on. You'll n
 Since data-dec is a python module we'll need to install it locally. First clone the repository, set up
 a local virtual environment, and install the requirements. Installing the requirements also
 installs the module.
+> [!Note]
+> This module is installed in editable mode because of some hardcodings. If you modify
+> anything in `data_dec/` it will change the program 
 
 ```sh
 git clone git@github.com:moranalytics/data-dec.git;

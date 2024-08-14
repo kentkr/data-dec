@@ -26,10 +26,11 @@ The smartest thing to start with is turn on that dang databricks cluster in dev.
 the dev full access cluster (id `1006-163626-a00gw6us`) and turn it on. You'll need it.
 
 Since data-dec is a python module we'll need to install it locally. First clone the repository, set up
-a local virtual environment, and install the requirements.
+a local virtual environment, and install the requirements. Installing the requirements also
+installs the module.
 
 ```sh
-git clone ...;
+git clone git@github.com:moranalytics/data-dec.git;
 cd data-dec;
 python3 -m venv venv;
 source venv/bin/activate;

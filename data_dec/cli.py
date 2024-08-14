@@ -15,7 +15,7 @@ test_parser = subparsers.add_parser('test', help='Test models')
 args = parser.parse_args()
 
 # global spark session - still useful to call in each model script
-spark = DatabricksSession.builder.profile("dev").getOrCreate()
+spark = DatabricksSession.builder.profile("data-dec").getOrCreate()
 
 # base entity import
 entity = Entity()
@@ -28,7 +28,7 @@ def load_models() -> None:
     for file in files:
         if is_py_file.search(file):
             with open(os.path.join(models_dir, file), 'r') as file:
-                exec(file.read())
+                exec(file.read(), globals())
 
 # loop through each model, write it to db
 def run() -> None:

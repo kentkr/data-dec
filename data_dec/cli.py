@@ -4,6 +4,7 @@ import re
 import argparse
 from databricks.connect import DatabricksSession
 from data_dec.entity import Entity 
+import yaml
 
 # parse arguments
 parser = argparse.ArgumentParser()
@@ -20,9 +21,12 @@ spark = DatabricksSession.builder.profile("data-dec").getOrCreate()
 # base entity import
 entity = Entity()
 
+from data_dec.compilation import Project
+project = Project()
+
 # Loop through each model file and execute - this loads the entity class
 def load_models() -> None:
-    models_dir = os.path.abspath(os.path.join(__file__, '../../project/models/'))
+    models_dir = os.path.join(project.project_dir, 'models')
     is_py_file = re.compile(r'\.py$')
     files = os.listdir(models_dir)
     for file in files:

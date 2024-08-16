@@ -1,12 +1,28 @@
 import os
-from typing import Dict
+from typing import Dict, Optional
 import yaml
+import re
+from data_dec.entity import Entity 
+from databricks.connect import DatabricksSession
+
+# global spark session
+spark = DatabricksSession.builder.profile("data-dec").getOrCreate()
 
 class Project:
-    """Instantiate project variables"""
-    def __init__(self) -> None:
-        self.project_dir = os.getcwd()
-        self.profiles_dir = os.path.expanduser('~/.dec/')
+    """Compile project infromation from yml"""
+    def __init__(
+            self, 
+            project_dir: Optional[str] = None,
+            profiles_dir: Optional[str] = None
+        ) -> None:
+        if project_dir:
+            self.project_dir = project_dir
+        else:
+            self.project_dir = os.getcwd()
+        if profiles_dir:
+            self.profiles_dir = profiles_dir
+        else:
+            self.profiles_dir = os.path.expanduser('~/.dec')
         self.process_decor_yml()
         self.process_profiles_yml()
 
@@ -44,6 +60,36 @@ class Project:
         self.database = profile_yml['targets'][self.target]['database']
         self.database = profile_yml['targets'][self.target]['schema']
 
+    def load_models(self) -> None:
+        models_dir = os.path.join(self.project_dir, 'models')
+        is_py_file = re.compile(r'\.py$')
+        files = os.listdir(models_dir)
+        for file in files:
+            if is_py_file.search(file):
+                with open(os.path.join(models_dir, file), 'r') as file:
+                    # globals allows local imports
+                    exec(file.read())
 
 
+class ProjectRunner:
+    def __init__(self, project: Project, entity: Entity) -> None:
+        self.project = project
+        self.project.load_models()
+        self.entity = entity
+
+    # loop through each model, write it to db
+    def run(self) -> None:
+        for model in self.entity.models.values():
+            model.write()
+    
+    # loop through each model, test it's output
+    def test(self) -> None:
+        for model in self.entity.models.values():
+            model.test()
+    
+    # loop through each model, write then test it
+    def build(self) -> None:
+        for model in self.entity.models.values():
+            model.write()
+            model.test()
 

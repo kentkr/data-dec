@@ -63,12 +63,14 @@ class Project:
     def load_models(self) -> None:
         models_dir = os.path.join(self.project_dir, 'models')
         is_py_file = re.compile(r'\.py$')
-        files = os.listdir(models_dir)
-        for file in files:
-            if is_py_file.search(file):
-                with open(os.path.join(models_dir, file), 'r') as file:
-                    # globals allows local imports
-                    exec(file.read())
+        # walk through model dir and children dirs
+        for dir_path, folders, files in os.walk(models_dir):
+            for file in files:
+                if is_py_file.search(file):
+                    file_path = os.path.join(dir_path, file)
+                    with open(file_path, 'r') as file:
+                        # globals allows local imports
+                        exec(file.read())
 
 
 class ProjectRunner:

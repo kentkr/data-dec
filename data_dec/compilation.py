@@ -72,10 +72,22 @@ class Project:
                         # globals allows local imports
                         exec(file.read())
 
+    def load_custom_tests(self) -> None:
+        models_dir = os.path.join(self.project_dir, 'tests')
+        is_py_file = re.compile(r'\.py$')
+        # walk through model dir and children dirs
+        for dir_path, folders, files in os.walk(models_dir):
+            for file in files:
+                if is_py_file.search(file):
+                    file_path = os.path.join(dir_path, file)
+                    with open(file_path, 'r') as file:
+                        # globals allows local imports
+                        exec(file.read())
 
 class ProjectRunner:
     def __init__(self, project: Project, entity: Entity) -> None:
         self.project = project
+        self.project.load_custom_tests()
         self.project.load_models()
         self.entity = entity
 

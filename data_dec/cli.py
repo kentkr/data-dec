@@ -27,7 +27,6 @@ def main():
     # configure and run project (load models etc into entity)
     project = Project(project_dir=args.project_dir, profiles_dir=args.profiles_dir)
     runner = ProjectRunner(project, entity)
-
     if args.command == 'build':
         runner.build()
     elif args.command == 'run':

@@ -60,7 +60,7 @@ class Project:
         # is there a good way to dynamically check if a key exists without a bazillion if statements?
         # raise an error if it doesn't?
         self.database = profile_yml['targets'][self.target]['database']
-        self.database = profile_yml['targets'][self.target]['schema']
+        self.schema = profile_yml['targets'][self.target]['schema']
 
     def load_models(self) -> None:
         models_dir = os.path.join(self.project_dir, 'models')

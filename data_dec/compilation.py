@@ -13,6 +13,9 @@ from databricks.connect import DatabricksSession
 spark = DatabricksSession.builder.profile("data-dec").getOrCreate()
 
 class RegisterLoader:
+    """
+    Execute project scripts which create load info to the register
+    """
     def __init__(self, project: Project) -> None:
         self.project = project
 
@@ -46,6 +49,9 @@ class RegisterLoader:
 
 
 class Compiler:
+    """
+    Take project configurations, models, tests, and mesh that all together
+    """
     def __init__(self, project) -> None:
         self.project = project
         self.register = Register
@@ -68,6 +74,7 @@ class Compiler:
                 self.models[model_name].tests.append(test)
 
 class DAG:
+    """Build a DAG off of a compiled project"""
     def __init__(self, compiler: Compiler) -> None:
         self.compiler = compiler
         self.graph = nx.DiGraph()
@@ -90,35 +97,4 @@ class DAG:
         nx.draw_networkx_labels(self.graph, pos, labels)
         plt.show()
         plt.close()
-
-
-class ProjectRunner:
-    def __init__(self, dag: DAG) -> None:
-        self.dag = dag
-
-    def run(self) -> None:
-        # sort nodes of graph, run them sequentially
-        # we can make this parallelized eventually
-        sorted_nodes = nx.topological_sort(self.dag.graph)
-        for node in sorted_nodes:
-            # access model class of node
-            self.dag.graph.nodes[node]['model'].write()
-    
-    # loop through each model, test it's output
-    def test(self) -> None:
-        sorted_nodes = nx.topological_sort(self.dag.graph)
-        for node in sorted_nodes:
-            # access model class of node
-            self.dag.graph.nodes[node]['model'].test()
-    
-    # loop through each model, write then test it
-    def build(self) -> None:
-        sorted_nodes = nx.topological_sort(self.dag.graph)
-        for node in sorted_nodes:
-            # access model class of node
-            self.dag.graph.nodes[node]['model'].write()
-            self.dag.graph.nodes[node]['model'].test()
-
-    def draw(self) -> None:
-        self.dag.draw_graph()
 

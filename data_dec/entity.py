@@ -1,7 +1,5 @@
 
-from collections import defaultdict
-import functools
-from typing import Callable, List, Optional
+from typing import Callable
 from pyspark.sql import DataFrame
 from dataclasses import dataclass
 
@@ -18,8 +16,6 @@ class Test:
     name: str
     fn: Callable
     kwargs: dict
-
-
 
 class Model:
     """Model class. Stores model metadata and can write/test a model"""
@@ -46,7 +42,7 @@ class Model:
         """Loop through tests for this function and test"""
         for test in self.tests:
             print(f'Testing model {self.name!r}, test {test.name}, args {test.kwargs}')
-            test.fn(self, **test.kwargs)
+            print(test.fn(self, **test.kwargs))
 
 
 class TestFunctions:

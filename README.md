@@ -22,114 +22,185 @@ Anything defined in the spark api gets ran on databricks. Everything else is exe
 
 # Quick start
 
-The smartest thing to start with is turn on that dang databricks cluster in dev. Find 
-the dev full access cluster (id `1006-163626-a00gw6us`) and turn it on. You'll need it.
+The first thing to do is to turn on our databricks cluster in dev. Find 
+the dev full access cluster (id `1006-163626-a00gw6us`) and turn it on. You'll need it soon.
 
-Since data-dec is a python module we'll need to install it locally. First clone the repository, set up
-a local virtual environment, and install the requirements. Installing the requirements also
-installs the module.
-> [!Note]
-> This module is installed in editable mode because of some hardcodings. If you modify
-> anything in `data_dec/` it will change the program 
+## Project setup
+
+data-dec uses a specific folder structure for a project to know where your data models and custom tests
+live. So let's create a folder dediacted to this project anywhere on your device. Name it whatever you want and move into it.
+The below example creates it in the Desktop folder of a mac.
 
 ```sh
-git clone git@github.com:moranalytics/data-dec.git;
-cd data-dec;
-python3 -m venv venv;
-source venv/bin/activate;
-pip3 install -r requirements.txt;
+cd ~/Desktop;
+mkdir dec;
+cd dec;
 ```
 
-Now you should be able to call `dec`, the entry point for the tool, from the cli. Test it out
-with the help flag. Run `dec -h`. You should see an output similar to this
+Now create a models/ dir with `mkdir models`. This will store all your python scripts your data models.
+
+Do the same but for tests. `mkdir tests`. Here you can add custom tests.
+
+Use the `touch` command to set up your `decor.yml` file like `touch decor.yml`. It will eventually store information about your "decorated"
+project, but for now only defines a default profile to use. Now open the file and paste the below info into it
+
+```yml
+version: 1
+
+profile: dec
+```
+
+Great! Now we need to define the profile that we just referenced. The profile is used to configure 
+what database and schema your models will be written to... for now. It'll eventually do more.
+
+```yml
+version: 1
+
+dec:
+  targets:
+    dev:
+      database: unity_dev_bi
+      schema: dec_kyle
+  default_target: dev
+```
+
+Feel free to use the database/schema shown above. If you change it that's fine, just make sure the 
+database/schema exist. data-dec doesn't have the ability to create new ones yet.
+
+That profile is for the data-dec project, but we also need to configure your databricks connect profile.
+Open or create (using `touch`) your `~/databrickscfg` file. Paste in the below info but replace
+`<token>` with your personal databricks token.
 
 ```txt
-usage: dec [-h] {build,run,test} ...
-
-positional arguments:
-  {build,run,test}
-    build           Run and test models
-    run             Run models
-    test            Test models
-
-options:
-  -h, --help        show this help message and exit
-
-```
-
-Great! Now we need a way to connect to databricks to execute code remotely. We'll do that using the
-`databricks-connect` module. It requires us to have a `~/.databrickscfg` file configured. You may already
-have one set up but make sure to follow this step. It requires a few specific values. This is a POC after all.
-What do you expect?
-
-Create the file using
-```sh
-touch ~/.databrickscfg
-```
-
-Now copy and paste the below text into it to create a 'data-dec' databricks profile. 
-Make sure to replace <token> with your token.
-
-```
 [data-dec]
 host = https://forian-central-dev-engineering.cloud.databricks.com/
 token = <token>
 jobs-api-version = 2.0
 cluster_id = 1006-163626-a00gw6us
 ```
-> [!WARNING] 
-> The cluster runtime must match `databricks-connect`. E.g. 13.3 runtime requires `databricks-connect==13.3.0`
 
-It uses the dev full access cluster, so make sure it's on while using this tool.
+Now that the project is mostly set up we can install the data-dec package.
 
-Now create a project directory that will store all your data models, and a py file for
-them.
+## Install
+
+Start by creating a virtual env in the root of your project. Don't forget to activate it.
 
 ```sh
-mkdir project; mkdir project/models;
-touch project/models/first_models.py;
+python3 -m venv venv;
+source venv/bin/activate
 ```
 
-Copy the below code into it.
+The easiest way to install data-dec is to use pip's git api. If your git ssh token is
+authorized you can install it like so 
+
+```sh
+pip install git+ssh://git@github.com/moranalytics/data-dec.git
+```
+
+If you don't have a ssh token authenticated you can install it with a git personal access token. 
+Just follow [this guide](https://docs.readthedocs.io/en/stable/guides/private-python-packages.html).
+
+You can now run `dec -h` and it should display the docs for package entry point `dec`.
+
+## create your first model
+
+Models are functions that output a dataframe. They are decorated with another function that allows data-dec 
+to compile them, eventually writing them to the database. The database and schema path are defined in your 
+`profiles.yml` file and the table name is the name of the function.
+
+Create a file `models/first_models.py` (`touch models/first_models.py`). Then define a function `model1` that pulls in the `dim_providers` 
+table from dash 2.
 
 ```py
-from data_dec.entity import Entity
+from data_dec.register import Register
 from pyspark.sql import DataFrame
 
-@Entity.register_model(path = 'unity_dev_bi.dbt_kyle.model1')
-@Entity.register_test(test_name = 'not_empty')
-@Entity.register_test(test_name = 'not_null')
+@Register.model()
 def model1() -> DataFrame:
-    df = spark.read.table('unity_prod_bi.bi_dashboard_blue.dim_providers')
-    df = df.select(df['npi']).limit(10)
-    return df
+    df = spark.read.table('unity_dev_bi.dbt_kyle.dim_providers')
+    return df.limit(5)
 ```
 
-There are a few things happening here:
-- We import our `Entity` class which'll keep metadata on all our entities
-- We register the current function as a model and pass in it's database path (where it gets written to)
-- We register the test 'not_empty' for this model
-- We register the test 'not_null' for this model
+>[!Note]
+> spark is created automatically. It's a remote connection to databricks. Anything executed
+> using the spark api is ran on databricks. Everything else is local.
 
-All those registrations get compiled in the `Entity` class. Then the cli tool can infer how to run them. So
-let's do that! Run `dec build`. You should see
+Now run `dec build`, the command to run then test all models. You should see an output like
 
-```
-Writing model 'model1' to table 'unity_dev_bi.dbt_kyle.model1'
-Testing model model1
-Testing: 'not_null'
-Test passes
-Testing: 'not_empty'
-Test passes
+```txt
+Writing model 'model1' to table 'unity_dev_bi.dec_kyle.model1'
 ```
 
-As noted in the output, `model1` is now available at `unity_dev_bi.dbt_kyle.model1`.
+## Test your first model
 
-Go forth and explore! Try creating your own model and specify the path you want it ot be written to.
-Just know the `not_null` test only looks at the first column right now. Oh and you can't create
-new tests yet...
+There are two tests available by default in data-dec. `not_empty`, which checks if a table is empty, and
+`not_null` which checks if a column is null. Lets add both of them to `model1`
 
-Fin.
+```py
+@Register.model()
+@Register.model_test(test_name = 'not_empty')
+@Register.model_test(test_name = 'not_null', column = 'npi')
+def model1() -> DataFrame:
+    df = spark.read.table('unity_dev_bi.dbt_kyle.dim_providers')
+    return df.limit(5)
+```
+
+You can see the test api is slightly different than registering models. It accepts the name of a test, 
+which under the hood is a function name, and an optional set of arguments.
+
+Run `dec build` or just `dec test` to execute them.
+
+## Create and visualize your first dag
+
+There's also a "reference" api in data-dec which defines a model that another model depends on. Currently
+the reference is explicit, but at some point may become something we can infer.
+
+Create `model2` which reads data from `model1`
+
+```py
+@Register.model()
+@Register.reference('model1')
+def model2() -> DataFrame:
+    df = spark.read.table('unity_dev_bi.dbt_kyle.model1')
+    return df.limit(5)
+```
+
+Now `dec build` with run `model2` after `model1`. To visualize this you actually draw the DAG. Run
+`dec draw` and a graph will appear. Make sure to x out of it or else the process won't quit.
+
+## Create your own test
+
+Creating your own test is as simple as defining a function that accepts a `Model` class (required), and some
+other optional args. Then you have to assign it to a builtin data-dec class `TestFunctions` 
+
+Create a file `tests/first_tests.py` (`touch tests/first_tests.py`) and paste in the below script.
+
+```py
+from data_dec.entity import TestFunctions
+from data_dec.entity import Model
+
+def npi_len_11(model: Model, column: str) -> str:
+    df = model.fn()
+    rows = df.select(column).collect()
+    for row in rows:
+        length = len(row[column])
+        if length != 11: 
+            return f'Test fails: len {length} for {row.npi!r}'
+    return 'Test passes'
+
+TestFunctions.npi_len_11 = npi_len_11
+```
+
+The function checks to see if all npis are of length 11. You can pass in the `column` arg depending on
+what the npi col is called.
+
+Now you can apply it to a model like you did the other functions. Below is an example.
+
+```py
+@Register.model_test(test_name = 'npi_len_11', column = 'npi')
+```
+
+Try running `dec test` again and you should see that model1 fails its test.
 
 # Caveates and pitfalls
 

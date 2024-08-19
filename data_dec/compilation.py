@@ -1,69 +1,23 @@
+from typing import List
+from collections import defaultdict
 import os
-from typing import Dict, Optional
-import yaml
 import re
-from data_dec.entity import Entity 
-from databricks.connect import DatabricksSession
 import networkx as nx
+from data_dec.register import Register
 import matplotlib.pyplot as plt
+from data_dec.configuration import Project
+from data_dec.entity import Model, Test, TestFunctions
+from databricks.connect import DatabricksSession
 
 # global spark session
 spark = DatabricksSession.builder.profile("data-dec").getOrCreate()
 
-class Project:
-    """Compile project infromation from yml"""
-    def __init__(
-            self, 
-            project_dir: Optional[str] = None,
-            profiles_dir: Optional[str] = None
-        ) -> None:
-        if project_dir:
-            self.project_dir = project_dir
-        else:
-            self.project_dir = os.getcwd()
-        if profiles_dir:
-            self.profiles_dir = profiles_dir
-        else:
-            self.profiles_dir = os.path.expanduser('~/.dec')
-        self.process_decor_yml()
-        self.process_profiles_yml()
-
-    def load_decor_yml(self) -> Dict:
-        decor_path = os.path.join(self.project_dir, 'decor.yml')
-        if os.path.exists(decor_path):
-            with open(decor_path, 'r') as file:
-                yml = yaml.safe_load(file)
-        else:
-            raise Exception(f'No decor.yml path found at {decor_path!r}')
-        return yml
-
-    def process_decor_yml(self) -> None:
-        yml = self.load_decor_yml()
-        if 'profile' in yml:
-            self.profile = yml['profile']
-        else:
-            raise Exception(f"'profile' not found in decor.yml")
-
-    def load_profiles_yml(self) -> Dict:
-        profiles_path = os.path.join(self.profiles_dir, 'profiles.yml')
-        if os.path.exists(profiles_path):
-            with open(profiles_path, 'r') as file:
-                yml = yaml.safe_load(file)
-        else:
-            raise Exception(f'No profiles.yml path found at {profiles_path}')
-        return yml
-
-    def process_profiles_yml(self) -> None:
-        yml = self.load_profiles_yml() 
-        profile_yml = yml[self.profile]
-        self.target = profile_yml['default_target']
-        # is there a good way to dynamically check if a key exists without a bazillion if statements?
-        # raise an error if it doesn't?
-        self.database = profile_yml['targets'][self.target]['database']
-        self.schema = profile_yml['targets'][self.target]['schema']
+class RegisterLoader:
+    def __init__(self, project: Project) -> None:
+        self.project = project
 
     def load_models(self) -> None:
-        models_dir = os.path.join(self.project_dir, 'models')
+        models_dir = os.path.join(self.project.project_dir, 'models')
         is_py_file = re.compile(r'\.py$')
         # walk through model dir and children dirs
         for dir_path, folders, files in os.walk(models_dir):
@@ -75,7 +29,7 @@ class Project:
                         exec(file.read())
 
     def load_custom_tests(self) -> None:
-        models_dir = os.path.join(self.project_dir, 'tests')
+        models_dir = os.path.join(self.project.project_dir, 'tests')
         is_py_file = re.compile(r'\.py$')
         # walk through model dir and children dirs
         for dir_path, folders, files in os.walk(models_dir):
@@ -86,18 +40,45 @@ class Project:
                         # globals allows local imports
                         exec(file.read())
 
+    def load_project(self):
+        self.load_custom_tests()
+        self.load_models()
+
+
+class Compiler:
+    def __init__(self, project) -> None:
+        self.project = project
+        self.register = Register
+        self.tests: dict[str, List[Test]] = defaultdict(list)
+        self.models: dict[str, Model] = {}
+        self.references = self.register.references
+        self.compile_models()
+        self.compile_tests()
+
+    def compile_models(self) -> None:
+        for model_function in self.register.models:
+            model = Model(fn = model_function, database=self.project.database, schema = self.project.schema)
+            self.models[model.name] = model
+
+    def compile_tests(self) -> None:
+        for model_name, tests in self.register.tests.items():
+            for unconfigured_test in tests:
+                fn = TestFunctions.__dict__[unconfigured_test.name]
+                test = Test(model = unconfigured_test.model, name = unconfigured_test.name, fn = fn, kwargs = unconfigured_test.kwargs)
+                self.models[model_name].tests.append(test)
+
 class DAG:
-    def __init__(self, entity: Entity) -> None:
-        self.entity = entity
+    def __init__(self, compiler: Compiler) -> None:
+        self.compiler = compiler
         self.graph = nx.DiGraph()
         self.build_graph()
 
     def build_graph(self) -> None:
         # add models as nodes
-        for model_key, model_class in self.entity.models.items():
+        for model_key, model_class in self.compiler.models.items():
             self.graph.add_node(model_key, model=model_class)
         # add references as edges
-        for model_key, references in self.entity.references.items():
+        for model_key, references in self.compiler.references.items():
             for reference in references:
                 self.graph.add_edge(model_key, reference)
 
@@ -112,12 +93,8 @@ class DAG:
 
 
 class ProjectRunner:
-    def __init__(self, project: Project, entity: Entity) -> None:
-        self.entity = entity
-        self.project = project
-        self.project.load_custom_tests()
-        self.project.load_models()
-        self.dag = DAG(entity)
+    def __init__(self, dag: DAG) -> None:
+        self.dag = dag
 
     def run(self) -> None:
         # sort nodes of graph, run them sequentially

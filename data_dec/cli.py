@@ -1,7 +1,7 @@
 
 import argparse
-from data_dec.compilation import Project, ProjectRunner
-from data_dec.entity import Entity
+from data_dec.compilation import Compiler, Project, ProjectRunner, RegisterLoader, DAG
+from data_dec.configuration import Project
 import yaml
 
 # parse arguments
@@ -22,11 +22,12 @@ def parse_args() -> argparse.Namespace:
 def main():
     # get arguments
     args = parse_args()
-    # Class object that tracks models, tests, etc
-    entity = Entity()
-    # configure and run project (load models etc into entity)
     project = Project(project_dir=args.project_dir, profiles_dir=args.profiles_dir)
-    runner = ProjectRunner(project, entity)
+    RegisterLoader(project).load_project()
+    compiler = Compiler(project)
+    dag = DAG(compiler)
+    # configure and run project (load models etc into entity)
+    runner = ProjectRunner(dag)
     if args.command == 'build':
         runner.build()
     elif args.command == 'run':
@@ -35,6 +36,8 @@ def main():
         runner.test()
     elif args.command == 'draw':
         runner.draw()
+    from code import interact
+    interact(local=locals())
 
 if __name__ == '__main__':
     main()

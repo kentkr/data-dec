@@ -12,6 +12,7 @@ def parse_args() -> argparse.Namespace:
     build_parser = subparsers.add_parser('build', help='Run and test models')
     run_parser = subparsers.add_parser('run', help='Run models')
     test_parser = subparsers.add_parser('test', help='Test models')
+    draw_parser = subparsers.add_parser('draw', help='Draw the DAG')
     parser.add_argument('--profiles-dir', help='Directory with your profiles.yml')
     parser.add_argument('--project-dir', help='Directory of your data-dec project')
     args = parser.parse_args()
@@ -26,12 +27,15 @@ def main():
     # configure and run project (load models etc into entity)
     project = Project(project_dir=args.project_dir, profiles_dir=args.profiles_dir)
     runner = ProjectRunner(project, entity)
+
     if args.command == 'build':
         runner.build()
     elif args.command == 'run':
         runner.run()
     elif args.command == 'test':
         runner.test()
+    elif args.command == 'draw':
+        runner.draw()
 
 if __name__ == '__main__':
     main()

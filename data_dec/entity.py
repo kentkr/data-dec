@@ -96,7 +96,7 @@ class Entity:
     @classmethod
     def register_reference(cls, reference: str) -> Callable:
         """
-        Register a reference. This can be another model or source, but is not being used yet.
+        Register a reference: a model that the decorated function depends on.
         """
         def decorator(fn: Callable) -> Callable:
             @functools.wraps(fn)

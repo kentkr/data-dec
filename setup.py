@@ -14,5 +14,7 @@ setup(
         'pyspark==3.5.2',
         'setuptools==72.2.0',
         'pyyaml==6.0.2',
+        'networkx==3.3.0',
+        'matplotlib==3.8.0'
     ]
 )

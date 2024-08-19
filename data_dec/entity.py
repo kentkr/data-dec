@@ -24,13 +24,17 @@ class Model:
             fn: Callable[[], DataFrame], 
             database: str, 
             schema: str, 
-            tests: list[Test] = []
+            tests: list[Test] = None
         ) -> None:
         self.fn = fn
         self.name = fn.__name__
         self.database = database
         self.schema = schema
-        self.tests = tests
+        # can't assign test = [] bc tests will be shared across classes
+        if tests:
+            self.tests = tests
+        else:
+            self.tests = []
 
     def write(self) -> None:
         """Save model as spark table"""

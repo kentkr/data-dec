@@ -55,7 +55,6 @@ class Compiler:
     def __init__(self, project) -> None:
         self.project = project
         self.register = Register
-        self.tests: dict[str, List[Test]] = defaultdict(list)
         self.models: dict[str, Model] = {}
         self.references = self.register.references
         self.compile_models()

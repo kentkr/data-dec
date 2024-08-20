@@ -11,14 +11,14 @@ The goal was to create a CLI tool to mimic DBT functionality, but with python:
 
 # How it works
 
-By calling the command `dec build`, the tool will compile all python code found in `project/models/*.py`. There,
-functions should be defined that return a spark DataFrame. Each of these functions should get a few decorators:
-model, reference, or test.
+By calling the command `dec build`, the tool will compile all python code found in `<your_project>/models/**/*.py`. 
+Decorators can be used to define those functions as models, apply tests to them, or denote a dependendency
+on another model.
 
-Each decorator then assigns the function to an Entity class which stores the compiled code. From there, 
-the cli can run each model, test them, or do both.
+The code then gets compiled into a DAG that can be ran, tested, or visualized by the cli.
 
-Anything defined in the spark api gets ran on databricks. Everything else is executed locally.
+All "models" must return a pyspark dataframe to be written to databricks. Anything defined in the spark api 
+gets ran on databricks. Everything else is executed locally.
 
 # Quick start
 
@@ -28,7 +28,7 @@ the dev full access cluster (id `1006-163626-a00gw6us`) and turn it on. You'll n
 ## Project setup
 
 data-dec uses a specific folder structure for a project to know where your data models and custom tests
-live. So let's create a folder dediacted to this project anywhere on your device. Name it whatever you want and move into it.
+live. So let's create a folder dedicated to this project somewhere on your device. Name it whatever you want and move into it.
 The below example creates it in the Desktop folder of a mac.
 
 ```sh
@@ -37,12 +37,12 @@ mkdir dec;
 cd dec;
 ```
 
-Now create a models/ dir with `mkdir models`. This will store all your python scripts your data models.
+Now create a models/ dir with `mkdir models`. This will store all the python scripts that deal with data models.
 
-Do the same but for tests. `mkdir tests`. Here you can add custom tests.
+Do the same but for tests. `mkdir tests`. Here you can add custom test functions..
 
-Use the `touch` command to set up your `decor.yml` file like `touch decor.yml`. It will eventually store information about your "decorated"
-project, but for now only defines a default profile to use. Now open the file and paste the below info into it
+Use the `touch` command to set up your `decor.yml` file (`touch decor.yml`). It will eventually store information about your "decorated"
+project, but for now only defines a default profile to use. Open the file and paste the below info into it
 
 ```yml
 version: 1
@@ -68,8 +68,8 @@ Feel free to use the database/schema shown above. If you change it that's fine, 
 database/schema exist. data-dec doesn't have the ability to create new ones yet.
 
 That profile is for the data-dec project, but we also need to configure your databricks connect profile.
-Open or create (using `touch`) your `~/databrickscfg` file. Paste in the below info but replace
-`<token>` with your personal databricks token.
+Open or create your `~/.databrickscfg` (`touch ~/.databricks.cfg`) file. Paste in the below info but replace
+`<token>` with your personal databricks token. Leave the profile name "data-dec" as is.
 
 ```txt
 [data-dec]
@@ -100,7 +100,7 @@ pip install git+ssh://git@github.com/moranalytics/data-dec.git
 If you don't have a ssh token authenticated you can install it with a git personal access token. 
 Just follow [this guide](https://docs.readthedocs.io/en/stable/guides/private-python-packages.html).
 
-You can now run `dec -h` and it should display the docs for package entry point `dec`.
+You can now run `dec -h` and it should display the docs for the package entry point `dec`.
 
 ## create your first model
 
@@ -141,7 +141,7 @@ There are two tests available by default in data-dec. `not_empty`, which checks 
 @Register.model_test(test_name = 'not_empty')
 @Register.model_test(test_name = 'not_null', column = 'npi')
 def model1() -> DataFrame:
-    df = spark.read.table('unity_dev_bi.dbt_kyle.dim_providers')
+    df = spark.read.table('unity_dev_bi.dec_kyle.dim_providers')
     return df.limit(5)
 ```
 
@@ -161,17 +161,22 @@ Create `model2` which reads data from `model1`
 @Register.model()
 @Register.reference('model1')
 def model2() -> DataFrame:
-    df = spark.read.table('unity_dev_bi.dbt_kyle.model1')
+    df = spark.read.table('unity_dev_bi.dec_kyle.model1')
     return df.limit(5)
 ```
 
-Now `dec build` with run `model2` after `model1`. To visualize this you actually draw the DAG. Run
-`dec draw` and a graph will appear. Make sure to x out of it or else the process won't quit.
+Now `dec build` will run `model2` after `model1`. To visualize this you can actually draw the DAG. Run
+`dec draw` and a graph will appear. When you're done looking at it make sure to close out of the window. 
+Otherwise the process won't quit.
 
 ## Create your own test
 
 Creating your own test is as simple as defining a function that accepts a `Model` class (required), and some
 other optional args. Then you have to assign it to a builtin data-dec class `TestFunctions` 
+
+>[!Note]
+> The `Model` class stores the model function as an object `fn`. To get the datafrmae from
+> the model run `model.fn()`. This will most likely changei in the future.
 
 Create a file `tests/first_tests.py` (`touch tests/first_tests.py`) and paste in the below script.
 
@@ -194,13 +199,13 @@ TestFunctions.npi_len_11 = npi_len_11
 The function checks to see if all npis are of length 11. You can pass in the `column` arg depending on
 what the npi col is called.
 
-Now you can apply it to a model like you did the other functions. Below is an example.
+Now you can decorate any model function to apply it. Just like you did with the `not_null` test for `model1`. Below is an example.
 
 ```py
 @Register.model_test(test_name = 'npi_len_11', column = 'npi')
 ```
 
-Try running `dec test` again and you should see that model1 fails its test.
+Try running `dec test` again and you should see that whatever model you apply it to should get tested.
 
 # Caveates and pitfalls
 

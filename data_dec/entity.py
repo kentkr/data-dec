@@ -1,31 +1,55 @@
 
-from collections import defaultdict
-import functools
-from typing import Callable, List
+from typing import Callable
 from pyspark.sql import DataFrame
+from dataclasses import dataclass
+
+
+@dataclass
+class UnconfiguredTest:
+    model: str
+    name: str
+    kwargs: dict
+
+@dataclass
+class Test:
+    model: str
+    name: str
+    fn: Callable
+    kwargs: dict
 
 class Model:
     """Model class. Stores model metadata and can write/test a model"""
-    def __init__(self, path: str, fn: Callable[[], DataFrame]) -> None:
-        self.path = path
+    def __init__(
+            self, 
+            fn: Callable[[], DataFrame], 
+            database: str, 
+            schema: str, 
+            tests: list[Test] = None
+        ) -> None:
         self.fn = fn
         self.name = fn.__name__
+        self.database = database
+        self.schema = schema
+        # can't assign test = [] bc tests will be shared across classes
+        if tests:
+            self.tests = tests
+        else:
+            self.tests = []
 
     def write(self) -> None:
         """Save model as spark table"""
-        print(f'Writing model {self.name!r} to table {self.path!r}')
-        self.fn().write.mode('overwrite').saveAsTable(self.path)
+        path = '.'.join([self.database, self.schema, self.name])
+        print(f'Writing model {self.name!r} to table {path!r}')
+        self.fn().write.mode('overwrite').saveAsTable(path)
 
     def test(self) -> None:
         """Loop through tests for this function and test"""
-        entities = Entity
-        print(f'Testing model {self.name}')
-        for test in entities.tests[self.name]:
-            print(f'Testing: {test.__name__!r}')
-            print(test(self))
+        for test in self.tests:
+            print(f'Testing model {self.name!r}, test {test.name}, args {test.kwargs}')
+            print(test.fn(self, **test.kwargs))
 
 
-class Test:
+class TestFunctions:
     """Static functions that take a model and test it"""
     @staticmethod
     def not_empty(model: Model):
@@ -36,71 +60,13 @@ class Test:
             return 'Test fails'
 
     @staticmethod
-    def not_null(model: Model):
+    def not_null(model: Model, column: str):
         df = model.fn()
         rows = df.collect()
         # this is an example
-        first_col = rows[0].__fields__[0]
         for row in rows:
-            if not row[first_col]:
-                return 'Test fails'
+            if not row[column]:
+                return f'Test fails'
         return 'Test passes'
-
-
-class Entity:
-    """
-    Entities class to keeps track of all models, tests, and references.
-
-    The methods are used as decorators.
-    """
-    models: dict[str, Model] = {}
-    tests: dict[str, List[Callable]] = defaultdict(list)
-    references: dict[str, List[str]] = defaultdict(list)
-
-    @classmethod
-    def register_model(cls, path: str) -> Callable:
-        """
-        Register a model. Model names are the name of the function. Path is where it will get
-        written to
-        """
-        def decorator(fn: Callable[[], DataFrame]) -> Callable:
-            # this keeps __name__ and __doc__ related to the wrapped function
-            @functools.wraps(fn)
-            # this always returns the decorated function, no modifications
-            def wrapper(*args, **kwargs) -> DataFrame:
-                return fn(*args, **kwargs)
-            # Create a Model and assign it to models
-            model = Model(path=path, fn=fn)
-            cls.models[fn.__name__] = model
-            return wrapper
-        return decorator
-
-    # will only work with register_model
-    @classmethod
-    def register_test(cls, test_name: str) -> Callable:
-        """
-        Register a test. Models use tests later when testing.
-        """
-        def decorator(fn: Callable) -> Callable:
-            @functools.wraps(fn)
-            def wrapper(*args, **kwargs) -> DataFrame:
-                return fn(*args, **kwargs)
-            test_function = Test.__dict__[test_name]
-            cls.tests[fn.__name__].append(test_function)
-            return wrapper
-        return decorator
-
-    @classmethod
-    def register_reference(cls, reference: str) -> Callable:
-        """
-        Register a reference. This can be another model or source, but is not being used yet.
-        """
-        def decorator(fn: Callable) -> Callable:
-            @functools.wraps(fn)
-            def wrapper(*args, **kwargs) -> DataFrame:
-                return fn(*args, **kwargs)
-            cls.references[reference].append(fn.__name__)
-            return wrapper
-        return decorator
 
 

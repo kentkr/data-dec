@@ -1,6 +1,7 @@
 from typing import List
 from collections import defaultdict
 import os
+import sys
 import re
 import networkx as nx
 from data_dec.register import Register
@@ -28,8 +29,9 @@ class RegisterLoader:
                 if is_py_file.search(file):
                     file_path = os.path.join(dir_path, file)
                     with open(file_path, 'r') as file:
-                        # globals allows local imports
-                        exec(file.read())
+                        # globals and sys path allows local imports
+                        sys.path.append(self.project.project_dir)
+                        exec(file.read(), globals())
 
     def load_custom_tests(self) -> None:
         models_dir = os.path.join(self.project.project_dir, 'tests')
@@ -40,8 +42,9 @@ class RegisterLoader:
                 if is_py_file.search(file):
                     file_path = os.path.join(dir_path, file)
                     with open(file_path, 'r') as file:
-                        # globals allows local imports
-                        exec(file.read())
+                        # globals and sys path allows local imports
+                        sys.path.append(self.project.project_dir)
+                        exec(file.read(), globals())
 
     def load_project(self):
         self.load_custom_tests()

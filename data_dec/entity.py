@@ -40,7 +40,10 @@ class Model:
         """Save model as spark table"""
         path = '.'.join([self.database, self.schema, self.name])
         print(f'Writing model {self.name!r} to table {path!r}')
-        self.fn().write.mode('overwrite').saveAsTable(path)
+        self.fn().write \
+            .mode('overwrite') \
+            .option('overwriteSchema', 'True') \
+            .saveAsTable(path)
 
     def test(self) -> None:
         """Loop through tests for this function and test"""

@@ -1,5 +1,4 @@
-from typing import List
-from collections import defaultdict
+from typing import Optional
 import os
 import sys
 import re
@@ -91,12 +90,16 @@ class DAG:
             for reference in references:
                 self.graph.add_edge(model_key, reference)
 
-    def draw_graph(self) -> None:
+    def draw_graph(self, node_list: Optional[list[str]] = None) -> None:
+        if node_list:
+            graph = self.graph.subgraph(node_list)
+        else:
+            graph = self.graph
         plt.figure(figsize=(8,6))
-        pos = nx.spring_layout(self.graph)
-        nx.draw(self.graph, pos, with_labels=True)
-        labels = {node: node for node in self.graph.nodes()}
-        nx.draw_networkx_labels(self.graph, pos, labels)
+        pos = nx.shell_layout(graph)
+        nx.draw(graph, pos, with_labels=True)
+        labels = {node: node for node in graph.nodes()}
+        nx.draw_networkx_labels(graph, pos, labels)
         plt.show()
         plt.close()
 

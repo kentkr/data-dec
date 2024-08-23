@@ -45,12 +45,6 @@ class Model:
             .option('overwriteSchema', 'True') \
             .saveAsTable(path)
 
-    def test(self) -> None:
-        """Loop through tests for this function and test"""
-        for test in self.tests:
-            print(f'Testing model {self.name!r}, test {test.name}, args {test.kwargs}')
-            print(test.fn(self, **test.kwargs))
-
 
 class TestFunctions:
     """Static functions that take a model and test it"""

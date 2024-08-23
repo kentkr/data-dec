@@ -1,6 +1,7 @@
 
 from typing import Callable
 from pyspark.sql import DataFrame
+from pyspark.sql.functions import col
 from dataclasses import dataclass
 
 
@@ -51,7 +52,8 @@ class TestFunctions:
     @staticmethod
     def not_empty(model: Model):
         df = model.fn() # this calls the original function of the model
-        if len(df.collect()) > 0:
+        count = df.limit(1).count()
+        if count > 0:
             return 'Test passes'
         else:
             return 'Test fails'
@@ -59,11 +61,10 @@ class TestFunctions:
     @staticmethod
     def not_null(model: Model, column: str):
         df = model.fn()
-        rows = df.collect()
-        # this is an example
-        for row in rows:
-            if not row[column]:
-                return f'Test fails'
-        return 'Test passes'
+        count = df.select(column).where(col(column).isNull()).count()
+        if count == 0:
+            return 'Test passes'
+        else:
+            return f'Test fails'
 
 

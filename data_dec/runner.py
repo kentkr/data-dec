@@ -53,8 +53,11 @@ class ProjectRunner:
     
     # loop through each model, write then test it
     def _build(self, node: str) -> None:
-        self.dag.graph.nodes[node]['model'].write()
-        self.dag.graph.nodes[node]['model'].test()
+        model = self.dag.graph.nodes[node]['model']
+        model.write()        
+        for test in model.tests:
+            print(f'Testing model {model.name!r}, test {test.name}, args {test.kwargs}')
+            print(test.fn(model, **test.kwargs))
 
     def draw(self) -> None:
         self.dag.draw_graph(self.nodes)

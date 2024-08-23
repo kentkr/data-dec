@@ -23,7 +23,7 @@ gets ran on databricks. Everything else is executed locally.
 # Quick start
 
 The first thing to do is to turn on our databricks cluster in dev. Find 
-the dev full access cluster (id `1006-163626-a00gw6us`) and turn it on. You'll need it soon.
+the `data_dec_cluster` cluster (id `0823-185034-5etcc6lh`) and turn it on. You'll need it soon.
 
 ## Project setup
 
@@ -76,7 +76,7 @@ Open or create your `~/.databrickscfg` (`touch ~/.databricks.cfg`) file. Paste i
 host = https://forian-central-dev-engineering.cloud.databricks.com/
 token = <token>
 jobs-api-version = 2.0
-cluster_id = 1006-163626-a00gw6us
+cluster_id = 0823-185034-5etcc6lh
 ```
 
 Now that the project is mostly set up we can install the data-dec package.

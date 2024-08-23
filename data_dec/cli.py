@@ -37,7 +37,8 @@ def main() -> None:
     elif args.command == 'run':
         runner.multi_thread('_run')
     elif args.command == 'test':
-        runner._test()
+        # models are multithreaded, but tests are run sequentially
+        runner.multi_thread('_test')
     elif args.command == 'draw':
         runner.draw()
 

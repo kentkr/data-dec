@@ -33,12 +33,11 @@ def main() -> None:
     dag = DAG(compiler)
     runner = ProjectRunner(dag, args)
     if args.command == 'build':
-        runner.multi_thread('_build')
+        runner.build()
     elif args.command == 'run':
-        runner.multi_thread('_run')
+        runner.run()
     elif args.command == 'test':
-        # models are multithreaded, but tests are run sequentially
-        runner.multi_thread('_test')
+        runner.test()
     elif args.command == 'draw':
         runner.draw()
 

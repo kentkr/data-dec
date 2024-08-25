@@ -11,12 +11,16 @@ class UnconfiguredTest:
     name: str
     kwargs: dict
 
-@dataclass
 class Test:
-    model: str
-    name: str
-    fn: Callable
-    kwargs: dict
+    def __init__(self, model: str, name: str, fn, kwargs) -> None:
+        self.model = model
+        self.name = name
+        self.fn = fn
+        self.kwargs = kwargs
+
+    def __call__(self, model) -> None:
+        print(f'Testing {self.model}, test {self.name}, kwargs {self.kwargs}')
+        print(self.fn(model, **self.kwargs))
 
 class Model:
     """Model class. Stores model metadata and can write/test a model"""

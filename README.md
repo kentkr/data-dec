@@ -11,14 +11,13 @@ The goal was to create a CLI tool to mimic DBT functionality, but with python:
 
 # How it works
 
-By calling the command `dec build`, the tool will compile all python code found in `<your_project>/models/**/*.py`. 
-Decorators can be used to define those functions as models, apply tests to them, or denote a dependendency
-on another model.
+By calling the command `dec build`, the tool will compile all python code found in `<your_project>/models/**/*.py` and
+`<your_project>/tests/**/*.py`. Decorators can be used to "register" a function as a models, a function as a test, 
+apply a test to a function, or denote a dependendency on another model.
 
 The code then gets compiled into a DAG that can be ran, tested, or visualized by the cli.
 
-All "models" must return a pyspark dataframe to be written to databricks. Anything defined in the spark api 
-gets ran on databricks. Everything else is executed locally.
+Anything defined in the spark api gets ran on databricks. Everything else is executed locally.
 
 # Quick start
 
@@ -39,7 +38,7 @@ cd dec;
 
 Now create a models/ dir with `mkdir models`. This will store all the python scripts that deal with data models.
 
-Do the same but for tests. `mkdir tests`. Here you can add custom test functions..
+Do the same but for tests. `mkdir tests`. Here you can add custom test functions.
 
 Use the `touch` command to set up your `decor.yml` file (`touch decor.yml`). It will eventually store information about your "decorated"
 project, but for now only defines a default profile to use. Open the file and paste the below info into it
@@ -171,33 +170,31 @@ Otherwise the process won't quit.
 
 ## Create your own test
 
-Creating your own test is as simple as defining a function that accepts a `Model` class (required), and some
-other optional args. Then you have to assign it to a builtin data-dec class `TestFunctions` 
+Creating your own test is as simple as defining a function that accepts a `Model` class (required) and returns a boolean. You
+can optionally define some arguments for it. Then you have to register it with the `test_function` decorator.
 
 >[!Note]
 > The `Model` class stores the model function as an object `fn`. To get the datafrmae from
-> the model run `model.fn()`. This will most likely changei in the future.
+> the model run `model.fn()`. This will most likely change in the future.
 
 Create a file `tests/first_tests.py` (`touch tests/first_tests.py`) and paste in the below script.
 
 ```py
-from data_dec.entity import TestFunctions
+from data_dec.register import Register
 from data_dec.entity import Model
 
-def npi_len_11(model: Model, column: str) -> str:
+@Register.test_function()
+def npi_len_11(model: Model, column: str) -> bool:
     df = model.fn()
-    rows = df.select(column).collect()
-    for row in rows:
-        length = len(row[column])
-        if length != 11: 
-            return f'Test fails: len {length} for {row.npi!r}'
-    return 'Test passes'
-
-TestFunctions.npi_len_11 = npi_len_11
+    df.filter(functions.length(df[column]) != 11)
+    count = df.count()
+    if count > 0:
+        return False
+    else:
+        return True
 ```
 
-The function checks to see if all npis are of length 11. You can pass in the `column` arg depending on
-what the npi col is called.
+The function checks to see if all npis are of length 11. If not the test fails.
 
 Now you can decorate any model function to apply it. Just like you did with the `not_null` test for `model1`. Below is an example.
 

@@ -90,7 +90,7 @@ class ProjectRunner:
                         queue.remove(node)
                         in_progress.append(node)
                         queue += self.get_new_successors(node, queue)
-                # check result of done nodes, also 
+                # check result of done nodes, also run tests
                 for node in in_progress:
                     future = futures[node]
                     if future.done():

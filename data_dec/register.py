@@ -3,7 +3,7 @@ from collections import defaultdict
 import functools
 from typing import Callable, List
 from pyspark.sql import DataFrame
-from data_dec.entity import UnconfiguredTest
+from data_dec.entity import UnconfiguredTest, TestFunctions
 
 class Register:
     """
@@ -32,7 +32,6 @@ class Register:
             return wrapper
         return decorator
 
-    # will only work with register_model
     @classmethod
     def model_test(cls, test_name: str, **kwargs) -> Callable:
         """
@@ -42,7 +41,7 @@ class Register:
             @functools.wraps(fn)
             def wrapper(*args, **kwargs) -> DataFrame:
                 return fn(*args, **kwargs)
-            test = UnconfiguredTest(model = fn.__name__, name = test_name, kwargs = kwargs)
+            test = UnconfiguredTest(model_name = fn.__name__, name = test_name, kwargs = kwargs)
             cls.tests[fn.__name__].append(test)
             return wrapper
         return decorator
@@ -60,3 +59,15 @@ class Register:
             return wrapper
         return decorator
 
+    @classmethod
+    def test_function(cls) -> Callable:
+        """
+        Register a test function to TestFuntions
+        """
+        def decorator(fn: Callable) -> Callable:
+            @functools.wraps(fn)
+            def wrapper(*args, **kwargs) -> DataFrame:
+                return fn(*args, **kwargs)
+            setattr(TestFunctions, fn.__name__, fn)
+            return wrapper
+        return decorator

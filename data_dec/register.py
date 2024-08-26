@@ -42,7 +42,7 @@ class Register:
             @functools.wraps(fn)
             def wrapper(*args, **kwargs) -> DataFrame:
                 return fn(*args, **kwargs)
-            test = UnconfiguredTest(model = fn.__name__, name = test_name, kwargs = kwargs)
+            test = UnconfiguredTest(model_name = fn.__name__, name = test_name, kwargs = kwargs)
             cls.tests[fn.__name__].append(test)
             return wrapper
         return decorator

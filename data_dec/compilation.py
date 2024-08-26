@@ -71,7 +71,7 @@ class Compiler:
         for model_name, tests in self.register.tests.items():
             for unconfigured_test in tests:
                 fn = TestFunctions.__dict__[unconfigured_test.name]
-                test = Test(model = unconfigured_test.model, name = unconfigured_test.name, fn = fn, kwargs = unconfigured_test.kwargs)
+                test = Test(model_name = unconfigured_test.model_name, name = unconfigured_test.name, fn = fn, kwargs = unconfigured_test.kwargs)
                 self.models[model_name].tests.append(test)
 
 class DAG:

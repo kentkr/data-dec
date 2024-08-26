@@ -1,6 +1,7 @@
 
 from typing import Callable
 from pyspark.sql import DataFrame
+from pyspark.sql.functions import col
 from dataclasses import dataclass
 
 
@@ -10,12 +11,16 @@ class UnconfiguredTest:
     name: str
     kwargs: dict
 
-@dataclass
 class Test:
-    model: str
-    name: str
-    fn: Callable
-    kwargs: dict
+    def __init__(self, model: str, name: str, fn, kwargs) -> None:
+        self.model = model
+        self.name = name
+        self.fn = fn
+        self.kwargs = kwargs
+
+    def __call__(self, model) -> None:
+        print(f'Testing {self.model}, test {self.name}, kwargs {self.kwargs}')
+        print(self.fn(model, **self.kwargs))
 
 class Model:
     """Model class. Stores model metadata and can write/test a model"""
@@ -45,19 +50,14 @@ class Model:
             .option('overwriteSchema', 'True') \
             .saveAsTable(path)
 
-    def test(self) -> None:
-        """Loop through tests for this function and test"""
-        for test in self.tests:
-            print(f'Testing model {self.name!r}, test {test.name}, args {test.kwargs}')
-            print(test.fn(self, **test.kwargs))
-
 
 class TestFunctions:
     """Static functions that take a model and test it"""
     @staticmethod
     def not_empty(model: Model):
         df = model.fn() # this calls the original function of the model
-        if len(df.collect()) > 0:
+        count = df.limit(1).count()
+        if count > 0:
             return 'Test passes'
         else:
             return 'Test fails'
@@ -65,11 +65,10 @@ class TestFunctions:
     @staticmethod
     def not_null(model: Model, column: str):
         df = model.fn()
-        rows = df.collect()
-        # this is an example
-        for row in rows:
-            if not row[column]:
-                return f'Test fails'
-        return 'Test passes'
+        count = df.select(column).where(col(column).isNull()).count()
+        if count == 0:
+            return 'Test passes'
+        else:
+            return f'Test fails'
 
 

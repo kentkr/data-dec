@@ -20,13 +20,16 @@ class Test:
         self.kwargs = kwargs
 
     def __call__(self, model) -> None:
-        logger.info(msg=f'TESTING {self.model_name} with {self.name}')
-        res = self.fn(model, **self.kwargs)
-        if res:
-            status = colored('PASS', 'green')
-        else:
-            status = colored('FAIL', 'red')
-        logger.info(msg=f'TEST COMPLETE {self.model_name} with {self.name} result: {status}')
+        logger.info(msg=f'TESTING {self.model_name!r} with {self.name!r}')
+        try:
+            res = self.fn(model, **self.kwargs)
+            if res:
+                status = colored('PASS', 'green')
+            else:
+                status = colored('FAIL', 'red')
+            logger.info(msg=f'TEST COMPLETE {self.model_name!r} with {self.name!r} result: {status}')
+        except Exception as e:
+            logger.error(msg=f'TEST {self.model_name!r} with {self.name!r} {colored('ERROR', 'red')}\n{e}')
 
 class Model:
     """Model class. Stores model metadata and can write/test a model"""
@@ -50,15 +53,15 @@ class Model:
     def write(self) -> None:
         """Save model as spark table"""
         path = '.'.join([self.database, self.schema, self.name])
-        logger.info(msg=f'RUNNING {self.name} to {path!r}')
+        logger.info(msg=f'RUNNING {self.name!r} to {path!r}')
         try:
             self.fn().write \
                 .mode('overwrite') \
                 .option('overwriteSchema', 'True') \
                 .saveAsTable(path)
-            logger.info(msg=f'{self.name} {colored('COMPLETE', 'green')}')
+            logger.info(msg=f'{self.name!r} {colored('COMPLETE', 'green')}')
         except Exception as e:
-            logger.error(msg=f'{self.name} {colored('ERROR', 'red')}\n{e}')
+            logger.error(msg=f'{self.name!r} {colored('ERROR', 'red')}\n{e}')
 
 
 class TestFunctions:

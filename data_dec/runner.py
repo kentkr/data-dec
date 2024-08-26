@@ -21,25 +21,6 @@ class ProjectRunner:
             return [node for node in sorted_nodes if node in selected_nodes]
         return sorted_nodes
 
-    def multi_thread(self, method: str) -> None:
-        _method = getattr(self, method)
-        futures = {}
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            for node in self.nodes:
-                # Ensure all dependencies are done
-                parent_futures = [futures[parent] for parent in self.dag.graph.predecessors(node) if parent in futures]
-                # If there are parent futures, wait for them to complete before processing the current node
-                if parent_futures:
-                    for parent_future in as_completed(parent_futures):
-                        pass  # Simply waiting for all parent futures to complete
-                # Submit the node's task to the executor
-                future = executor.submit(self.dag.graph.nodes[node]['model'].write)
-                futures[node] = future
-            # Optionally, wait for all tasks to complete
-            for future in as_completed(futures.values()):
-                future.result()  # Raise exception if any occurred
-
-
     def parents_complete(self, node: str, futures: dict) -> bool:
         subgraph = self.dag.graph.subgraph(self.nodes)
         parents = list(subgraph.predecessors(node))
@@ -63,20 +44,31 @@ class ProjectRunner:
 
     def run(self) -> None:
         queue = self.get_starter_nodes()
+        in_progress = []
         futures = {}
+        # create threadpool 
         with ThreadPoolExecutor(max_workers=4) as executor:
-            while queue:
+            while queue or in_progress:
                 for node in queue:
+                    # if node parents complete, submit and remove from queue
                     if self.parents_complete(node, futures):
                         model = self.dag.graph.nodes[node]['model']
                         future = executor.submit(model.write)    
                         futures[node] = future
                         queue.remove(node)
+                        in_progress.append(node)
                         queue += self.get_new_successors(node, queue)
+                # check result (and exception) of finished nodes
+                for node in in_progress:
+                    future = futures[node]
+                    if future.done():
+                        future.result()
+                        in_progress.remove(node)
     
     # loop through each model, test it's output
     def test(self) -> None:
         with ThreadPoolExecutor(max_workers=4) as executor:
+            # run all test nodes at once (limited by max workers)
             for node in self.nodes:
                 model = self.dag.graph.nodes[node]['model']
                 for test in model.tests:
@@ -85,25 +77,28 @@ class ProjectRunner:
     # loop through each model, write then test it
     def build(self) -> None:
         queue = self.get_starter_nodes()
-        test_queue = []
+        in_progress = []
         futures = {}
         with ThreadPoolExecutor(max_workers=4) as executor:
-            while queue:
+            while queue or in_progress:
+                # same as run
                 for node in queue:
                     if self.parents_complete(node, futures):
                         model = self.dag.graph.nodes[node]['model']
                         future = executor.submit(model.write)    
                         futures[node] = future
                         queue.remove(node)
+                        in_progress.append(node)
                         queue += self.get_new_successors(node, queue)
-                        test_queue.append(node)
-                for node in test_queue:
+                # check result of done nodes, also 
+                for node in in_progress:
                     future = futures[node]
                     if future.done():
+                        future.result()
+                        in_progress.remove(node)
                         model = self.dag.graph.nodes[node]['model']
                         for test in model.tests:
                             executor.submit(test, model)
-                        test_queue.remove(node)
 
     def draw(self) -> None:
         self.dag.draw_graph(self.nodes)

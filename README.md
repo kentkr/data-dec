@@ -182,6 +182,7 @@ Create a file `tests/first_tests.py` (`touch tests/first_tests.py`) and paste in
 ```py
 from data_dec.register import Register
 from data_dec.entity import Model
+from pyspark.sql import functions
 
 @Register.test_function()
 def npi_len_11(model: Model, column: str) -> bool:
@@ -203,6 +204,24 @@ Now you can decorate any model function to apply it. Just like you did with the 
 ```
 
 Try running `dec test` again and you should see that whatever model you apply it to should get tested.
+
+### More efficient test strategy
+
+The above method to get the dataframe of a model is a bit inefficient. Each test esssentially treats
+the dataframe as a view and will rerun it everytime.
+
+But the intent of data-dec's model tests is to test data that's already written. So you can access it
+directly from databricks by querying it. Get the database path with the `model` attributes `database`, 
+`schema`, and `name` then make a query with `spark.sql`.
+
+```py
+@Register.test_function()
+def npi_len_11(model: Model, column: str) -> bool:
+    path = '.'.join([model.database, model.schema, model.name])
+    df = spark.sql(f"select * from {path}")
+
+    # the rest of your test
+```
 
 # Caveates and pitfalls
 

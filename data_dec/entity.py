@@ -5,6 +5,9 @@ from pyspark.sql.functions import col
 from dataclasses import dataclass
 from data_dec.logging import logger
 from termcolor import colored
+from databricks.connect import DatabricksSession
+
+spark = DatabricksSession.builder.profile("data-dec").getOrCreate()
 
 @dataclass
 class UnconfiguredTest:
@@ -20,16 +23,16 @@ class Test:
         self.kwargs = kwargs
 
     def __call__(self, model) -> None:
-        logger.info(msg=f'TESTING {self.model_name!r} with {self.name!r}')
+        logger.info(msg=f'TESTING {self.model_name!r} with {self.name!r}, kwargs: {self.kwargs}')
         try:
             res = self.fn(model, **self.kwargs)
             if res:
                 status = colored('PASS', 'green')
             else:
                 status = colored('FAIL', 'red')
-            logger.info(msg=f'TEST COMPLETE {self.model_name!r} with {self.name!r} result: {status}')
+            logger.info(msg=f'TEST COMPLETE {self.model_name!r} with {self.name!r}, kwargs: {self.kwargs} result: {status}')
         except Exception as e:
-            logger.error(msg=f'TEST {self.model_name!r} with {self.name!r} {colored('ERROR', 'red')}\n{e}')
+            logger.error(msg=f'TEST {self.model_name!r} with {self.name!r}, kwargs: {self.kwargs} {colored('ERROR', 'red')}\n{e}')
 
 class Model:
     """Model class. Stores model metadata and can write/test a model"""
@@ -68,7 +71,9 @@ class TestFunctions:
     """Static functions that take a model and test it"""
     @staticmethod
     def not_empty(model: Model) -> bool:
-        df = model.fn() # this calls the original function of the model
+        path = '.'.join([model.database, model.schema, model.name])
+        df = spark.sql(f"select * from {path}")
+        #df = model.fn() # this calls the original function of the model
         count = df.limit(1).count()
         if count > 0:
             return True
@@ -77,7 +82,8 @@ class TestFunctions:
 
     @staticmethod
     def not_null(model: Model, column: str) -> bool:
-        df = model.fn()
+        path = '.'.join([model.database, model.schema, model.name])
+        df = spark.sql(f"select * from {path}")
         count = df.select(column).where(col(column).isNull()).count()
         if count == 0:
             return True

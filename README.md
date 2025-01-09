@@ -72,7 +72,7 @@ Open or create your `~/.databrickscfg` (`touch ~/.databricks.cfg`) file. Paste i
 
 ```txt
 [data-dec]
-host = https://forian-central-dev-engineering.cloud.databricks.com/
+host = https://<your databricks host name>.cloud.databricks.com/
 token = <token>
 jobs-api-version = 2.0
 cluster_id = 0823-185034-5etcc6lh
